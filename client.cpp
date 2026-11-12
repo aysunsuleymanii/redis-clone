@@ -9,6 +9,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
+#include <iostream>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
@@ -26,8 +27,24 @@ int main() {
 
     int rc = connect(fd, (struct sockaddr *)&addr, sizeof(addr));
 
-    char message[6] = "Hello";
-    write(fd, message, strlen(message));
+    std:: string line;
+
+    while (true) {
+        std:: cout << "> ";
+        if (!std::getline(std::cin, line)) break;
+        if (line == "quit") break;
+
+        line += "\n";
+        write(fd, line.data(), line.size());
+
+        char buff[1024];
+        ssize_t n = read(fd, buff, sizeof(buff));
+        if (n <= 0) {
+            std::cout << "Server closed the connection!" << std::endl;
+            break;
+        }
+        std::cout << std::string(buff, n);
+    }
 
     close(fd);
 

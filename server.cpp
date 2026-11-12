@@ -19,6 +19,7 @@ static void do_something(int connfd) {
 
         std::string msg(buff, n);
         std::cout << "Client sent: " << msg << std::endl;
+        write(connfd, buff, n);
     }
 
 
