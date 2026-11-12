@@ -8,6 +8,20 @@
 #include <netinet/in.h>
 
 static void do_something(int connfd) {
+    char buff[1024];
+
+    while (true) {
+        ssize_t n = read(connfd, buff, sizeof(buff));
+        if (n == 0) break;
+        if (n < 0) {
+            std :: cout << "Reading failed" << std::endl;
+        }
+
+        std::string msg(buff, n);
+        std::cout << "Client sent: " << msg << std::endl;
+    }
+
+
     std::cout << "Client accepted" << std::endl;
 }
 
@@ -27,7 +41,7 @@ int main() {
 
     struct sockaddr_in addr = {0};
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(1234);
+    addr.sin_port = htons(6379);
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
 
