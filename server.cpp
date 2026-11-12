@@ -2,80 +2,55 @@
 // Created by Aysun Suleymanturk on 07/11/2026.
 //
 
-
-#include <stdint.h>
-#include <stdlib.h> // abort()
-#include <string.h> // strlen()
-#include <stdio.h> // fprintf(), stderr
-#include <errno.h> // errno: the error code set when syscall fails
-#include <unistd.h> // read(), write(), clos()
-#include <arpa/inet.h> // htons(), htonl() -> byter order conversion
-#include <sys/socket.h> // socket(), bind(), listen(), accept(), setsockopt()
-#include <netinet/ip.h> // struct sockaddr_in (IPv4 address + port)
-
-
-static void msg(const char *msg) { // for errors it can carry on
-    fprintf(stderr, "%s\n", msg);
-}
-
-static void die(const char *msg) { // for errors which server cannot continue
-    int err = errno;
-    fprintf(stderr, "[%d] %s\n", err, msg);
-    abort();
-}
+#include <iostream>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 
 static void do_something(int connfd) {
-    char rbuf[64] = {};
-    ssize_t n = read(connfd, rbuf, sizeof(rbuf) - 1);
-    if (n < 0) {
-        msg("read() error");
-        return;
-    }
-    fprintf(stderr, "client says: %s\n", rbuf);
-
-    char wbuf[] = "world";
-    write(connfd, wbuf, strlen(wbuf));
+    std::cout << "Client accepted" << std::endl;
 }
 
 int main() {
-    // Socket creation
-    int fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (fd < 0) {
-        die("socket()");
-    }
+    // 1. create the socket
+    int fd = socket(PF_INET, SOCK_STREAM, 0);
 
-    // Socket Option - this is needed for most server applications
-    int val = 1;
-    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
+    // 2. set the options on the socket
+    // setsockopt(int socket, int level, int option_name, const void *option_value, socklen_t option_len);
 
-    // bind
-    struct sockaddr_in addr = {};
+    int value = 1;
+    int setSocketOptionsRes = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &value, sizeof(value));
+
+
+    // 3. Bind the address to the socket
+    //  bind(int socket, const struct sockaddr *address, socklen_t address_len);
+
+    struct sockaddr_in addr = {0};
     addr.sin_family = AF_INET;
-    addr.sin_port = ntohs(1234);
-    addr.sin_addr.s_addr = ntohl(0);    // wildcard address 0.0.0.0
-    int rv = bind(fd, (const struct sockaddr *)&addr, sizeof(addr));
-    if (rv) {
-        die("bind()");
+    addr.sin_port = htons(1234);
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+
+
+    int bindingRes = bind(fd, (struct sockaddr *) &addr, sizeof(addr));
+    if (bindingRes < 0) {
+        std::cout << "The binding of socket was not successful." << std::endl;
     }
 
-    // listen
-    rv = listen(fd, SOMAXCONN);
-    if (rv) {
-        die("listen()");
+    // 4. Connect the socket
+    int listenRes = listen(fd, SOMAXCONN);
+    if (listenRes < 0) {
+        std::cout << "The server is listening!" << std::endl;
     }
 
+    // 5. Wait for connections
     while (true) {
-        // accept
-        struct sockaddr_in client_addr = {};
-        socklen_t addrlen = sizeof(client_addr);
-        int connfd = accept(fd, (struct sockaddr *)&client_addr, &addrlen);
+        struct sockaddr_in client_addr = {0};
+        socklen_t client_len = sizeof(client_addr);
+        int connfd = accept(fd, (struct sockaddr *)&client_addr, &client_len);
         if (connfd < 0) {
-            continue;   // error
+            std::cout << "The client cannot be accepted!" << std::endl;
         }
-
         do_something(connfd);
         close(connfd);
     }
-
-    return 0;
 }
